@@ -45,6 +45,9 @@ func listAllImage(w http.ResponseWriter, req *http.Request)  {
 
 func main() {
 	gAutoDeploy.init()
+
+	gAutoDeploy.StopAllPodsByImageName("nginx")
+
 	http.HandleFunc("/test", test)
 	http.HandleFunc("/listAllImage", listAllImage)
 
