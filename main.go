@@ -6,6 +6,7 @@ import (
 	"github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"net/http"
+	"time"
 )
 
 var gAutoDeploy *AutoDeploy = new(AutoDeploy)
@@ -46,7 +47,12 @@ func listAllImage(w http.ResponseWriter, req *http.Request)  {
 func main() {
 	gAutoDeploy.init()
 
-	gAutoDeploy.StopAllPodsByImageName("nginx")
+	dpList, err := gAutoDeploy.StopAllPodsByImageName("nginx")
+
+	time.Sleep(5*time.Second)
+	if err == nil {
+		gAutoDeploy.WaitDeployListAvailable(dpList)
+	}
 
 	http.HandleFunc("/test", test)
 	http.HandleFunc("/listAllImage", listAllImage)
