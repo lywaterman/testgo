@@ -1,0 +1,17 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: testjar-deployment
+spec:
+  selector:
+    matchLabels:
+      app: testjar 
+  replicas: 2 # tells deployment to run 2 pods matching the template
+  template:
+    metadata:
+      labels:
+        app: testjar 
+    spec:
+      containers:
+        - name: testjar 
+          image: 127.0.0.1:5000/testjar:latest

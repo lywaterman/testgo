@@ -6,7 +6,6 @@ import (
 	"github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"net/http"
-	"time"
 )
 
 var gAutoDeploy *AutoDeploy
@@ -48,15 +47,21 @@ func main() {
 	deploy := new(AutoDeploy)
 	gAutoDeploy = deploy
 
-	deploy.init("nginx:1.14.2")
+	//deploy.init("127.0.0.1:5000/testjar:latest")
+
+	////之前将所有的相关的dp处理掉，后面就没有partialName了
+	//dpList, err := deploy.StopAllPodsByImageName("testjar")
+
+	deploy.init("nginx:1.14.2", 80)
+	deploy.StartPortForward()
 
 	//之前将所有的相关的dp处理掉，后面就没有partialName了
-	dpList, err := deploy.StopAllPodsByImageName("nginx")
+	//dpList, err := deploy.StopAllPodsByImageName("testjar")
 
-	time.Sleep(5*time.Second)
-	if err == nil {
-		deploy.WaitDeployListAvailable(dpList)
-	}
+	//time.Sleep(5*time.Second)
+	//if err == nil {
+	//	deploy.WaitDeployListAvailable(dpList)
+	//}
 
 	http.HandleFunc("/test", test)
 	http.HandleFunc("/listAllImage", listAllImage)

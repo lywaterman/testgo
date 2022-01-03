@@ -17,11 +17,12 @@ import (
 )
 
 type AutoDeploy struct {
-	ClientSet        *kubernetes.Clientset
-	ImageName    string
+	ClientSet       *kubernetes.Clientset
+	ImageName    	string
+	Port 			int32
 }
 
-func (deploy* AutoDeploy) init(ImangeName string) {
+func (deploy* AutoDeploy) init(ImangeName string, Port int32) {
 	config, err := clientcmd.BuildConfigFromFlags("", k3sConfigPath)
 	if err != nil {
 		logrus.Fatalln("集群config创建失败")
@@ -34,6 +35,7 @@ func (deploy* AutoDeploy) init(ImangeName string) {
 	}
 
 	deploy.ImageName = ImangeName
+	deploy.Port = Port
 }
 
 func (deploy* AutoDeploy) GetPodListByImageName(imageName string) ([]v1.Pod, error)  {
@@ -98,6 +100,16 @@ func (deploy *AutoDeploy) getDpIndicatorByPod(pod v1.Pod) (*DeployIndicator, err
 	return nil, errors.New("ownerIsNotDP")
 }
 
+func (deploy *AutoDeploy) checkEnvByName(env []v1.EnvVar, name string) bool {
+	for _, envVar := range env {
+		if envVar.Name == name {
+			return true
+		}
+	}
+
+	return false
+}
+
 func (deploy *AutoDeploy) modifyDeployForDebug(dpi *DeployIndicator, imageName string) error {
 	deployment, err := deploy.ClientSet.AppsV1().Deployments(dpi.Namespace).Get(context.TODO(), dpi.Name, metav1.GetOptions{})
 	deploymentNew := *deployment
@@ -110,9 +122,16 @@ func (deploy *AutoDeploy) modifyDeployForDebug(dpi *DeployIndicator, imageName s
 		if strings.Contains(container.Image, imageName) {
 			replica := int32(2)
 			deploymentNew.Spec.Replicas = &replica
-			deploymentNew.Spec.Template.Spec.Containers[i].ImagePullPolicy = v1.PullIfNotPresent
+			deploymentNew.Spec.Template.Spec.Containers[i].ImagePullPolicy = v1.PullAlways
 			deploymentNew.Spec.Template.Spec.Containers[i].Image = deploy.ImageName
 			deploymentNew.Spec.Template.Labels["CustomDebug"] = "true"
+
+			if !deploy.checkEnvByName(deploymentNew.Spec.Template.Spec.Containers[i].Env, "JAVA_OPTS") {
+				deploymentNew.Spec.Template.Spec.Containers[i].Env =
+					append(deploymentNew.Spec.Template.Spec.Containers[i].Env,
+						v1.EnvVar{Name: "JAVA_OPTS", Value: "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=0.0.0.0:8787"})
+			}
+
 		}
 	}
 	_, err = deploy.ClientSet.AppsV1().Deployments(dpi.Namespace).Update(context.TODO(), &deploymentNew, metav1.UpdateOptions{})
@@ -203,7 +222,7 @@ func (deploy *AutoDeploy) StartPortForward() error {
 					ports = append(ports, container.Ports[0].ContainerPort)
 				} else {
 					portList := make([]int32, 0, 5)
-					portList = append(portList, container.Ports[0].ContainerPort)
+					portList = append(portList, deploy.Port)
 					desList[pod.Name] = portList
 				}
 			}
