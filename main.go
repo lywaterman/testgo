@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-var gAutoDeploy *AutoDeploy = new(AutoDeploy)
+var gAutoDeploy *AutoDeploy
 
 func test(w http.ResponseWriter, req *http.Request)  {
 	w.Write([]byte("test"))
@@ -45,13 +45,17 @@ func listAllImage(w http.ResponseWriter, req *http.Request)  {
 }
 
 func main() {
-	gAutoDeploy.init()
+	deploy := new(AutoDeploy)
+	gAutoDeploy = deploy
 
-	dpList, err := gAutoDeploy.StopAllPodsByImageName("nginx")
+	deploy.init("nginx:1.14.2")
+
+	//之前将所有的相关的dp处理掉，后面就没有partialName了
+	dpList, err := deploy.StopAllPodsByImageName("nginx")
 
 	time.Sleep(5*time.Second)
 	if err == nil {
-		gAutoDeploy.WaitDeployListAvailable(dpList)
+		deploy.WaitDeployListAvailable(dpList)
 	}
 
 	http.HandleFunc("/test", test)
